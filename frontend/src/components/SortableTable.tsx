@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/sortable';
 import { ItemRow } from './ItemRow.tsx';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = '/api';
 
 export interface Item {
     id: number;
