@@ -1,17 +1,17 @@
 [build]
-  command = "npm run build" # Assuming your frontend build command is this
-  publish = "frontend/dist" # Path to your frontend's build output
-  functions = "netlify/functions" # Directory for Netlify functions
+  command = "npm run build"
+  publish = "frontend/dist"
+  functions = "netlify/functions"
 
 [functions]
-  external_node_modules = ["express", "serverless-http", "cors"] # Add other backend dependencies if needed
+  external_node_modules = ["express", "serverless-http", "cors"]
   node_bundler = "esbuild"
   included_files = ["netlify/functions/items.json"]
 
 [[redirects]]
   force = true
   from = "/api/*"
-  to = "/.netlify/functions/api/:splat" # 'api' should match your function file name (api.js)
+  to = "/.netlify/functions/api/:splat"
   status = 200
 
 [[redirects]]
