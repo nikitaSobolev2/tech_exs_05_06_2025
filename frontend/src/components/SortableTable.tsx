@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
     DndContext,
@@ -43,6 +43,9 @@ const SortableTable: React.FC = () => {
             coordinateGetter: sortableKeyboardCoordinates,
         })
     );
+
+    const dragDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
+    const lastOrderRef = useRef<number[]>([]);
 
     const fetchItems = useCallback(async (page: number, search: string, options?: { preserveOrderAndSelection?: boolean, signal?: AbortSignal }) => {
         const { preserveOrderAndSelection = false, signal } = options || {};
@@ -141,10 +144,16 @@ const SortableTable: React.FC = () => {
                 }
 
                 const newOrderedItems = arrayMove(currentItems, oldIndex, newIndex);
-                
                 const newOrderIds = newOrderedItems.map(item => item.id);
-                axios.post(`${API_URL}/items/order`, { newOrder: newOrderIds })
-                    .catch(err => console.error("Error updating item order on server:", err));
+                lastOrderRef.current = newOrderIds;
+
+                if (dragDebounceTimeout.current) {
+                    clearTimeout(dragDebounceTimeout.current);
+                }
+                dragDebounceTimeout.current = setTimeout(() => {
+                    axios.post(`${API_URL}/items/order`, { newOrder: lastOrderRef.current })
+                        .catch(err => console.error("Error updating item order on server:", err));
+                }, 1000);
 
                 return newOrderedItems;
             });
