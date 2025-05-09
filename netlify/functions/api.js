@@ -112,17 +112,31 @@ router.post("/items/order", (req, res) => {
     const newOrderIsValid = newOrder.every((id) => currentItemIdsSet.has(id));
 
     if (newOrderIsValid) {
-      const newOrderSet = new Set(newOrder);
-      const remainingItemIds = itemOrder.filter(
-        (id) => !newOrderSet.has(id)
-      );
-      itemOrder = [...newOrder, ...remainingItemIds];
+      // Integrate reordered subset into global order
+      const itemsToReorderSet = new Set(newOrder);
+      const updatedGlobalOrder = [];
+      const subOrderItemsIterator = newOrder[Symbol.iterator]();
+
+      for (const currentItemId of itemOrder) {
+        if (itemsToReorderSet.has(currentItemId)) {
+          const nextItemFromSubOrder = subOrderItemsIterator.next();
+          if (!nextItemFromSubOrder.done) {
+            updatedGlobalOrder.push(nextItemFromSubOrder.value);
+          } else {
+            // Fallback: should not happen
+            updatedGlobalOrder.push(currentItemId);
+          }
+        } else {
+          updatedGlobalOrder.push(currentItemId);
+        }
+      }
+      itemOrder = updatedGlobalOrder;
 
       // Update cached order arrays
       validOrderedIds = [...itemOrder];
-      const validOrderedIdSet = new Set(itemOrder);
+      const allItemIdsInUpdatedOrder = new Set(itemOrder);
       remainingItems = items
-        .filter((item) => !validOrderedIdSet.has(item.id))
+        .filter((item) => !allItemIdsInUpdatedOrder.has(item.id))
         .map((item) => item.id);
       effectiveItemOrder = [...validOrderedIds, ...remainingItems];
 
