@@ -114,13 +114,13 @@ router.post("/items/order", (req, res) => {
     if (newOrderIsValid) {
       const newOrderSet = new Set(newOrder);
       const remainingItemIds = itemOrder.filter(
-        (id) => currentItemIdsSet.has(id) && !newOrderSet.has(id)
+        (id) => !newOrderSet.has(id)
       );
       itemOrder = [...newOrder, ...remainingItemIds];
 
       // Update cached order arrays
-      validOrderedIds = itemOrder.filter((id) => itemIdSet.has(id));
-      const validOrderedIdSet = new Set(validOrderedIds);
+      validOrderedIds = [...itemOrder];
+      const validOrderedIdSet = new Set(itemOrder);
       remainingItems = items
         .filter((item) => !validOrderedIdSet.has(item.id))
         .map((item) => item.id);

@@ -181,7 +181,7 @@ const SortableTable: React.FC = () => {
             .catch((err) =>
               console.error("Error updating item order on server:", err)
             );
-        }, 1000);
+        }, 250);
 
         return newOrderedItems;
       });
