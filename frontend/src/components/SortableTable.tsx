@@ -45,7 +45,6 @@ const SortableTable: React.FC = () => {
   );
 
   const dragDebounceTimeout = useRef<NodeJS.Timeout | null>(null);
-  const lastOrderRef = useRef<number[]>([]);
 
   const fetchItems = useCallback(
     async (
@@ -160,7 +159,7 @@ const SortableTable: React.FC = () => {
 
         if (oldIndex === -1 || newIndex === -1) {
           console.warn(
-            "Draggable item not found for ID:",
+            "Draggable item not found in currentItems for ID:",
             active.id,
             "or",
             over.id
@@ -169,15 +168,27 @@ const SortableTable: React.FC = () => {
         }
 
         const newOrderedItems = arrayMove(currentItems, oldIndex, newIndex);
-        const newOrderIds = newOrderedItems.map((item) => item.id);
-        lastOrderRef.current = newOrderIds;
+
+        const movedId = parseInt(active.id as string, 10);
+        const currentNewIndexOfMovedItem = newOrderedItems.findIndex(item => item.id === movedId);
+
+        if (currentNewIndexOfMovedItem === -1) {
+            console.error("Moved item not found in newOrderedItems array after move. This should not happen.");
+            return newOrderedItems;
+        }
+
+        const orderUpdatePayload = {
+          movedItemId: movedId,
+          itemBeforeId: currentNewIndexOfMovedItem > 0 ? newOrderedItems[currentNewIndexOfMovedItem - 1].id : null,
+          itemAfterId: currentNewIndexOfMovedItem < newOrderedItems.length - 1 ? newOrderedItems[currentNewIndexOfMovedItem + 1].id : null,
+        };
 
         if (dragDebounceTimeout.current) {
           clearTimeout(dragDebounceTimeout.current);
         }
         dragDebounceTimeout.current = setTimeout(() => {
           axios
-            .post(`${API_URL}/items/order`, { newOrder: lastOrderRef.current })
+            .post(`${API_URL}/items/order`, orderUpdatePayload)
             .catch((err) =>
               console.error("Error updating item order on server:", err)
             );

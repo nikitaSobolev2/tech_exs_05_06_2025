@@ -107,50 +107,66 @@ router.get("/items", (req, res) => {
 
 // Update item order
 router.post("/items/order", (req, res) => {
-  const { newOrder } = req.body;
-  if (Array.isArray(newOrder)) {
-    const newOrderIsValid = newOrder.every((id) => currentItemIdsSet.has(id));
+  const { movedItemId, itemBeforeId, itemAfterId } = req.body;
 
-    if (newOrderIsValid) {
-      // Integrate reordered subset into global order
-      const itemsToReorderSet = new Set(newOrder);
-      const updatedGlobalOrder = [];
-      const subOrderItemsIterator = newOrder[Symbol.iterator]();
-
-      for (const currentItemId of itemOrder) {
-        if (itemsToReorderSet.has(currentItemId)) {
-          const nextItemFromSubOrder = subOrderItemsIterator.next();
-          if (!nextItemFromSubOrder.done) {
-            updatedGlobalOrder.push(nextItemFromSubOrder.value);
-          } else {
-            // Fallback: should not happen
-            updatedGlobalOrder.push(currentItemId);
-          }
-        } else {
-          updatedGlobalOrder.push(currentItemId);
-        }
-      }
-      itemOrder = updatedGlobalOrder;
-
-      // Update cached order arrays
-      validOrderedIds = [...itemOrder];
-      const allItemIdsInUpdatedOrder = new Set(itemOrder);
-      remainingItems = items
-        .filter((item) => !allItemIdsInUpdatedOrder.has(item.id))
-        .map((item) => item.id);
-      effectiveItemOrder = [...validOrderedIds, ...remainingItems];
-
-      return res.status(200).json({ message: "Order updated successfully" });
-    }
-    return res
-      .status(400)
-      .json({
-        message: "Invalid order data provided or item IDs do not exist",
-      });
+  if (typeof movedItemId !== 'number') {
+    return res.status(400).json({ message: "Invalid request body: movedItemId must be a number." });
   }
-  return res
-    .status(400)
-    .json({ message: "Invalid request body: newOrder must be an array" });
+  if (itemBeforeId !== null && typeof itemBeforeId !== 'number') {
+    return res.status(400).json({ message: "Invalid request body: itemBeforeId must be a number or null." });
+  }
+  if (itemAfterId !== null && typeof itemAfterId !== 'number') {
+    return res.status(400).json({ message: "Invalid request body: itemAfterId must be a number or null." });
+  }
+
+  if (!currentItemIdsSet.has(movedItemId)) {
+    return res.status(400).json({ message: "movedItemId does not exist." });
+  }
+  if (itemBeforeId !== null && !currentItemIdsSet.has(itemBeforeId)) {
+    return res.status(400).json({ message: "itemBeforeId does not exist." });
+  }
+  if (itemAfterId !== null && !currentItemIdsSet.has(itemAfterId)) {
+    return res.status(400).json({ message: "itemAfterId does not exist." });
+  }
+  if (itemBeforeId === movedItemId && itemBeforeId !== null) {
+    return res.status(400).json({ message: "itemBeforeId cannot be the same as movedItemId." });
+  }
+  if (itemAfterId === movedItemId && itemAfterId !== null) {
+    return res.status(400).json({ message: "itemAfterId cannot be the same as movedItemId." });
+  }
+
+  let tempOrder = itemOrder.filter(id => id !== movedItemId);
+
+  if (itemAfterId !== null) {
+    const targetIndex = tempOrder.indexOf(itemAfterId);
+    if (targetIndex !== -1) {
+      tempOrder.splice(targetIndex, 0, movedItemId);
+    } else {
+      console.warn(`itemAfterId (${itemAfterId}) not found in tempOrder. movedItemId (${movedItemId}) will be appended.`);
+      tempOrder.push(movedItemId);
+    }
+  } else if (itemBeforeId !== null) {
+    const targetIndex = tempOrder.indexOf(itemBeforeId);
+    if (targetIndex !== -1) {
+      tempOrder.splice(targetIndex + 1, 0, movedItemId);
+    } else {
+      console.warn(`itemBeforeId (${itemBeforeId}) not found in tempOrder. movedItemId (${movedItemId}) will be prepended.`);
+      tempOrder.unshift(movedItemId); 
+    }
+  } else {
+    tempOrder.unshift(movedItemId);
+  }
+
+  itemOrder = tempOrder;
+
+  validOrderedIds = [...itemOrder];
+  const allItemIdsInUpdatedOrder = new Set(itemOrder);
+  remainingItems = items 
+    .filter((item) => !allItemIdsInUpdatedOrder.has(item.id))
+    .map((item) => item.id);
+  effectiveItemOrder = [...validOrderedIds, ...remainingItems];
+
+  return res.status(200).json({ message: "Order updated successfully" });
 });
 
 // Update item selection
